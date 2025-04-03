@@ -39,13 +39,7 @@ class Frame(models.Model):
         blank=True,
         related_name='next_frame_relation'
     )
-    next_frame = models.OneToOneField(
-        'self',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='previous_frame_relation'
-    )
+
 
     def __str__(self):
         return f"Chapter {self.chapter.name} - Frame {self.id} - {self.get_frame_type_display()}"
@@ -83,15 +77,14 @@ class Quiz(models.Model):
     frame = models.OneToOneField(
         Frame, on_delete=models.CASCADE, related_name='quiz')
     question = models.TextField(help_text="Quiz question")
+    options = models.ManyToManyField(
+        'QuizOption', related_name='quizzes', blank=True)
 
     def __str__(self):
         return f"Quiz in Frame {self.frame.id}: {self.question[:30]}..."
 
 
 class QuizOption(models.Model):
-    """Options for the quiz question"""
-    quiz = models.ForeignKey(
-        Quiz, on_delete=models.CASCADE, related_name='options')
     text = models.CharField(max_length=255, help_text="Option text")
     is_correct = models.BooleanField(
         default=False, help_text="Is this the correct answer?")

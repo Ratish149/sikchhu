@@ -53,8 +53,19 @@ class Chapter(models.Model):
         super().save(*args, **kwargs)
 
 
-class Video(models.Model):
+class Lesson(models.Model):
     chapter_name = models.ForeignKey(Chapter, on_delete=models.CASCADE)
+    name = models.CharField(max_length=200)
+    slug = models.SlugField(max_length=200, unique=True, null=True, blank=True)
+    icon = models.FileField(upload_to='lesson_icons/', null=True, blank=True)
+    description = models.TextField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+class Video(models.Model):
+    lesson_name = models.ForeignKey(
+        Lesson, on_delete=models.CASCADE, null=True, blank=True)
     name = models.CharField(max_length=200)
     slug = models.SlugField(max_length=200, unique=True, null=True, blank=True)
     video_url = models.URLField(null=True, blank=True)
@@ -78,8 +89,8 @@ class LearningMaterial(models.Model):
         ('Old Question', 'Old Question'),
         ('Gamefication', 'Gamefication'),
     ]
-    chapter = models.ForeignKey(
-        Chapter, on_delete=models.CASCADE, related_name="materials")
+    lesson = models.ForeignKey(
+        Lesson, on_delete=models.CASCADE, related_name="materials", null=True, blank=True)
     title = models.CharField(max_length=255, null=True, blank=True)
     file = models.FileField(upload_to="materials/", null=True, blank=True)
     material_type = models.CharField(max_length=255, choices=CHOICES)
@@ -103,8 +114,8 @@ class Answer(models.Model):
 
 
 class Question(models.Model):
-    chapter = models.ForeignKey(
-        Chapter, on_delete=models.CASCADE, related_name='questions')
+    lesson = models.ForeignKey(
+        Lesson, on_delete=models.CASCADE, related_name='questions', null=True, blank=True)
     question_text = models.CharField(max_length=255)
     explanation = models.TextField(null=True, blank=True)
     answer = models.ManyToManyField(Answer, related_name='questions')

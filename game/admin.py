@@ -7,13 +7,6 @@ from unfold.admin import ModelAdmin, TabularInline, StackedInline
 admin.site.register(Background, ModelAdmin)
 
 
-class GameObjectInline(TabularInline):
-    """Inline for adding multiple objects inside a Frame"""
-    model = GameObject
-    extra = 1  # Show one empty row by default
-    tab = True
-
-
 class DialogueInline(TabularInline):
     """Inline for adding dialogues linked to objects inside a Frame"""
     model = Dialogue
@@ -21,18 +14,10 @@ class DialogueInline(TabularInline):
     tab = True
 
 
-class QuizOptionInline(TabularInline):
-    """Inline for adding multiple quiz options inside a Quiz"""
-    model = QuizOption
-    extra = 2  # Show two empty option rows by default
-    tab = True
-
-
-class QuizInline(StackedInline):
+class QuizInline(TabularInline):
     """Inline for adding a Quiz inside a Frame"""
     model = Quiz
     extra = 1  # Allow adding quiz directly in Frame
-    inlines = [QuizOptionInline]  # Nested quiz options
     tab = True
 
 
@@ -43,7 +28,7 @@ class FrameAdmin(ModelAdmin):
     list_filter = ('frame_type',)
     search_fields = ('id', 'frame_type')
 
-    inlines = [GameObjectInline, DialogueInline, QuizInline]
+    inlines = [DialogueInline, QuizInline]
 
     def get_next_frame(self, obj):
         """Show the next frame in the admin panel"""
@@ -78,10 +63,9 @@ class DialogueAdmin(ModelAdmin):
 @admin.register(Quiz)
 class QuizAdmin(ModelAdmin):
     list_display = ('question', 'frame')
-    inlines = [QuizOptionInline]
 
 
 @admin.register(QuizOption)
 class QuizOptionAdmin(ModelAdmin):
-    list_display = ('text', 'quiz', 'is_correct')
+    list_display = ('text', 'is_correct')
     list_filter = ('is_correct',)

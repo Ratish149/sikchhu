@@ -2,7 +2,7 @@ from django.contrib import admin
 from unfold.admin import ModelAdmin, TabularInline, StackedInline
 from tinymce.widgets import TinyMCE
 from django.db import models
-from .models import Class, Subject, Chapter, Video, LearningMaterial, Question, Answer
+from .models import Class, Subject, Chapter, Lesson, Video, LearningMaterial, Question, Answer
 # Register your models here.
 
 
@@ -31,7 +31,13 @@ class QuestionAdmin(TabularInline):
 
 
 class ChapterAdmin(ModelAdmin):
-    inlines = [LearningMaterialInline, VideoInline, QuestionAdmin]
+    formfield_overrides = {
+        models.TextField: {'widget': TinyMCEWidget}
+    }
+
+
+class LessonAdmin(ModelAdmin):
+    inlines = [VideoInline, LearningMaterialInline, QuestionAdmin]
     formfield_overrides = {
         models.TextField: {'widget': TinyMCEWidget}
     }
@@ -44,3 +50,4 @@ admin.site.register(Video, ModelAdmin)
 admin.site.register(LearningMaterial, ModelAdmin)
 # admin.site.register(Question, QuestionAdmin)
 admin.site.register(Answer, ModelAdmin)
+admin.site.register(Lesson, LessonAdmin)
