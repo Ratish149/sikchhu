@@ -24,7 +24,7 @@ class VideoInline(TabularInline):
     tab = True
 
 
-class QuestionAdmin(TabularInline):
+class QuestionInline(TabularInline):
     model = Question
     extra = 1
     tab = True
@@ -37,7 +37,7 @@ class ChapterAdmin(ModelAdmin):
 
 
 class LessonAdmin(ModelAdmin):
-    inlines = [VideoInline, LearningMaterialInline, QuestionAdmin]
+    inlines = [VideoInline, LearningMaterialInline, QuestionInline]
     formfield_overrides = {
         models.TextField: {'widget': TinyMCEWidget}
     }
@@ -48,6 +48,6 @@ admin.site.register(Subject, ModelAdmin)
 admin.site.register(Chapter, ChapterAdmin)
 admin.site.register(Video, ModelAdmin)
 admin.site.register(LearningMaterial, ModelAdmin)
-# admin.site.register(Question, QuestionAdmin)
+admin.site.register(Question, ModelAdmin)
 admin.site.register(Answer, ModelAdmin)
 admin.site.register(Lesson, LessonAdmin)

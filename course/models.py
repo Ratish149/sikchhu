@@ -62,12 +62,18 @@ class Lesson(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    def __str__(self):
+        return self.name
+
+    def save(self, *args, **kwargs):
+        self.slug = slugify(self.name)
+        super().save(*args, **kwargs)
+
 
 class Video(models.Model):
     lesson_name = models.ForeignKey(
         Lesson, on_delete=models.CASCADE, null=True, blank=True)
     name = models.CharField(max_length=200)
-    slug = models.SlugField(max_length=200, unique=True, null=True, blank=True)
     video_url = models.URLField(null=True, blank=True)
     video_file = models.FileField(
         upload_to='video_files/', null=True, blank=True)
@@ -93,7 +99,8 @@ class LearningMaterial(models.Model):
         Lesson, on_delete=models.CASCADE, related_name="materials", null=True, blank=True)
     title = models.CharField(max_length=255, null=True, blank=True)
     file = models.FileField(upload_to="materials/", null=True, blank=True)
-    material_type = models.CharField(max_length=255, choices=CHOICES)
+    material_type = models.CharField(
+        max_length=255, choices=CHOICES, null=True, blank=True)
     description = models.TextField(null=True, blank=True)
     game_url = models.URLField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

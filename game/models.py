@@ -40,7 +40,6 @@ class Frame(models.Model):
         related_name='next_frame_relation'
     )
 
-
     def __str__(self):
         return f"Chapter {self.chapter.name} - Frame {self.id} - {self.get_frame_type_display()}"
 
@@ -88,6 +87,8 @@ class QuizOption(models.Model):
     text = models.CharField(max_length=255, help_text="Option text")
     is_correct = models.BooleanField(
         default=False, help_text="Is this the correct answer?")
+    explanation = models.TextField(
+        help_text="Explanation for the answer", blank=True, null=True)
 
     def __str__(self):
         return f"Option for Quiz {self.quiz.id}: {self.text} ({'Correct' if self.is_correct else 'Wrong'})"
