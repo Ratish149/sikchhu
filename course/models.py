@@ -131,3 +131,15 @@ class Question(models.Model):
 
     def __str__(self):
         return self.question_text[:50] + "..." if len(self.question_text) > 50 else self.question_text
+
+
+class LessonReview(models.Model):
+    lesson = models.ForeignKey(
+        Lesson, on_delete=models.CASCADE, related_name='reviews', null=True, blank=True)
+    review_text = models.TextField(null=True, blank=True)
+    rating = models.IntegerField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Review for {self.lesson.name}"

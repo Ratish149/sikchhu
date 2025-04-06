@@ -51,4 +51,9 @@ urlpatterns = [
     # Validate Answer URLs
     path('validate-answer/', views.ValidateAnswerView.as_view(),
          name='validate-answer'),
+
+    # Lesson Review URLs
+    path('lesson-reviews/', views.LessonReviewListCreateView.as_view(),
+         name='lesson-review-list-create'),
+
 ]

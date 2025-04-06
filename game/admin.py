@@ -23,7 +23,7 @@ class QuizInline(TabularInline):
 
 @admin.register(Frame)
 class FrameAdmin(ModelAdmin):
-    list_display = ('chapter', 'name', 'frame_type',
+    list_display = ('lesson', 'name', 'frame_type',
                     'previous_frame', 'get_next_frame')
     list_filter = ('frame_type',)
     search_fields = ('id', 'frame_type')

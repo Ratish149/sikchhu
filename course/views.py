@@ -1,10 +1,10 @@
 from rest_framework import status, generics, filters as rest_filters, views
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from .models import Class, Subject, Chapter, Lesson, Video, LearningMaterial, Answer, Question
+from .models import Class, Subject, Chapter, Lesson, Video, LearningMaterial, Answer, Question, LessonReview
 from .serializers import (
     ClassSerializer, SubjectSerializer, ChapterSerializer, LessonSerializer,
-    VideoSerializer, LearningMaterialSerializer, AnswerSerializer, QuestionSerializer
+    VideoSerializer, LearningMaterialSerializer, AnswerSerializer, QuestionSerializer, LessonReviewSerializer
 )
 from rest_framework.parsers import JSONParser, FormParser, MultiPartParser
 import json
@@ -1538,3 +1538,49 @@ class ValidateAnswerView(views.APIView):
                 {"error": f"Failed to validate answer: {str(e)}"},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+class LessonReviewListCreateView(generics.ListCreateAPIView):
+    queryset = LessonReview.objects.all()
+    serializer_class = LessonReviewSerializer
+    permission_classes = [IsAuthenticated]
+    parser_classes = (JSONParser, FormParser, MultiPartParser)
+
+    def create(self, request, *args, **kwargs):
+        try:
+            lesson_id = request.data.get('lesson')
+            review_text = request.data.get('review_text')
+            rating = request.data.get('rating')
+
+            if not lesson_id:
+                return Response({'error': 'Lesson is required'}, status=status.HTTP_400_BAD_REQUEST)
+            if not review_text:
+                return Response({'error': 'Review text is required'}, status=status.HTTP_400_BAD_REQUEST)
+            if not rating:
+                return Response({'error': 'Rating is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+            lesson = Lesson.objects.get(id=lesson_id)
+            review = LessonReview.objects.create(
+                lesson=lesson,
+                review_text=review_text,
+                rating=rating
+            )
+
+            return Response({
+                'id': review.id,
+                'lesson': review.lesson.id,
+                'review_text': review.review_text,
+                'rating': review.rating,
+                'created_at': review.created_at,
+                'updated_at': review.updated_at
+            }, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    def get_queryset(self):
+        queryset = LessonReview.objects.all()
+        lesson_slug = self.request.query_params.get('lesson', None)
+        if lesson_slug is not None:
+            queryset = queryset.filter(lesson__slug=lesson_slug)
+        return queryset

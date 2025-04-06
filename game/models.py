@@ -1,5 +1,5 @@
 from django.db import models
-from course.models import Chapter
+from course.models import Lesson
 
 
 class Background(models.Model):
@@ -19,8 +19,8 @@ class Frame(models.Model):
         ('scene', 'Background with Objects and Text'),
         ('quiz', 'Quiz Frame'),
     ]
-    chapter = models.ForeignKey(
-        Chapter, on_delete=models.CASCADE, related_name='frames', blank=True, null=True)
+    lesson = models.ForeignKey(
+        Lesson, on_delete=models.CASCADE, related_name='frames', blank=True, null=True)
     name = models.CharField(max_length=255, null=True, blank=True)
     frame_type = models.CharField(
         max_length=20, choices=FRAME_TYPES, default='background')

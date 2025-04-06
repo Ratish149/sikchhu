@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Class, Subject, Chapter, Lesson, Video, LearningMaterial, Answer, Question
+from .models import Class, Subject, Chapter, Lesson, Video, LearningMaterial, Answer, Question, LessonReview
 
 
 class ClassSerializer(serializers.ModelSerializer):
@@ -65,4 +65,11 @@ class LearningMaterialSerializer(serializers.ModelSerializer):
         model = LearningMaterial
         fields = ['id', 'lesson', 'title', 'file', 'material_type',
                   'description', 'game_url', 'created_at', 'updated_at']
+        read_only_fields = ['created_at', 'updated_at']
+
+
+class LessonReviewSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LessonReview
+        fields = ['id', 'lesson', 'review_text', 'rating', 'created_at', 'updated_at']
         read_only_fields = ['created_at', 'updated_at']
