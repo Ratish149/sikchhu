@@ -77,6 +77,9 @@ class Video(models.Model):
     video_url = models.URLField(null=True, blank=True)
     video_file = models.FileField(
         upload_to='video_files/', null=True, blank=True)
+    video_thumbnail = models.FileField(
+        upload_to='video_thumbnails/', null=True, blank=True)
+    video_duration = models.IntegerField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

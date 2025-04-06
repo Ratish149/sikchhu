@@ -539,17 +539,22 @@ class LessonListCreateView(generics.ListCreateAPIView):
 
             # Process videos
             created_videos = []
+            total_video_duration = 0
             for video_data in videos_data:
                 video_name = video_data.get('name')
                 video_url = video_data.get('video_url', None)
                 video_file = request.FILES.get('video_file', None)
+                video_duration = video_data.get('video_duration', None)
+                video_thumbnail = request.FILES.get('video_thumbnail', None)
 
                 if video_name:
                     video = Video.objects.create(
                         lesson_name=lesson,
                         name=video_name,
                         video_url=video_url,
-                        video_file=video_file
+                        video_file=video_file,
+                        video_duration=video_duration,
+                        video_thumbnail=video_thumbnail
                     )
 
                     video_file_url = None
@@ -557,15 +562,25 @@ class LessonListCreateView(generics.ListCreateAPIView):
                         video_file_url = request.build_absolute_uri(
                             video.video_file.url)
 
+                    video_thumbnail_url = None
+                    if video.video_thumbnail and hasattr(video.video_thumbnail, 'url'):
+                        video_thumbnail_url = request.build_absolute_uri(
+                            video.video_thumbnail.url)
+
                     created_videos.append({
                         'id': video.id,
                         'name': video.name,
                         'slug': video.slug,
                         'video_url': video.video_url,
                         'video_file': video_file_url,
+                        'video_duration': video.video_duration,
+                        'video_thumbnail': video_thumbnail_url,
                         'created_at': video.created_at,
                         'updated_at': video.updated_at
                     })
+
+                    if video.video_duration:
+                        total_video_duration += video.video_duration
 
             # Process learning materials
             created_materials = []
@@ -670,7 +685,8 @@ class LessonListCreateView(generics.ListCreateAPIView):
                 'updated_at': lesson.updated_at,
                 'videos': created_videos,
                 'learning_materials': created_materials,
-                'questions': created_questions
+                'questions': created_questions,
+                'total_video_duration': total_video_duration
             }, status=status.HTTP_201_CREATED)
 
         except Exception as e:
@@ -713,11 +729,21 @@ class LessonRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
 
             # Get videos related to this lesson - using the related manager
             videos = []
+            total_duration = 0
             for video in Video.objects.filter(lesson_name=lesson):
                 video_file_url = None
                 if video.video_file and hasattr(video.video_file, 'url'):
                     video_file_url = request.build_absolute_uri(
                         video.video_file.url)
+
+                # Add proper handling for video_thumbnail
+                video_thumbnail_url = None
+                if video.video_thumbnail and hasattr(video.video_thumbnail, 'url'):
+                    video_thumbnail_url = request.build_absolute_uri(
+                        video.video_thumbnail.url)
+
+                if video.video_duration:
+                    total_duration += video.video_duration
 
                 videos.append({
                     'id': video.id,
@@ -725,7 +751,8 @@ class LessonRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
                     'slug': getattr(video, 'slug', None),
                     'video_url': video.video_url,
                     'video_file': video_file_url,
-
+                    'video_duration': video.video_duration,
+                    'video_thumbnail': video_thumbnail_url,
                 })
 
             # Get learning materials related to this lesson - using the related_name "materials"
@@ -772,6 +799,7 @@ class LessonRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
                 'description': lesson.description,
                 'icon': icon_url,
                 'videos': videos,
+                'total_video_duration': total_duration,
                 'learning_materials': learning_materials,
                 'questions': questions
             })
