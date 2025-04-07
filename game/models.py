@@ -1,5 +1,6 @@
 from django.db import models
 from course.models import Lesson
+from account.models import CustomUser
 
 
 class Background(models.Model):
@@ -41,7 +42,7 @@ class Frame(models.Model):
     )
 
     def __str__(self):
-        return f"Chapter {self.chapter.name} - Frame {self.id} - {self.get_frame_type_display()}"
+        return f"Frame {self.id} - {self.name} - {self.get_frame_type_display()}"
 
     def get_next_frame(self):
         return self.next_frame if hasattr(self, 'next_frame') else None
@@ -91,4 +92,23 @@ class QuizOption(models.Model):
         help_text="Explanation for the answer", blank=True, null=True)
 
     def __str__(self):
-        return f"Option for Quiz {self.quiz.id}: {self.text} ({'Correct' if self.is_correct else 'Wrong'})"
+        return f"Option: {self.text} ({'Correct' if self.is_correct else 'Wrong'})"
+
+
+class UserProgress(models.Model):
+    """Tracks user progress through lessons and frames"""
+    user = models.ForeignKey(
+        CustomUser, on_delete=models.CASCADE, related_name='progress')
+    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE)
+    current_frame = models.ForeignKey(
+        Frame, on_delete=models.SET_NULL, null=True, blank=True)
+    completed_frames = models.ManyToManyField(
+        Frame, related_name='completed_by_users')
+    score = models.IntegerField(default=0)
+    last_interaction = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ['user', 'lesson']
+
+    def __str__(self):
+        return f"{self.user.username}'s progress in {self.lesson.name}"
