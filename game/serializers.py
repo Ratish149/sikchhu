@@ -18,7 +18,8 @@ class QuizOptionSerializer(serializers.ModelSerializer):
 class GameObjectSerializer(serializers.ModelSerializer):
     class Meta:
         model = GameObject
-        fields = ['id', 'frame', 'name', 'image']
+        fields = ['id', 'frame', 'name', 'image', 'position_x', 'position_y',
+                  'animation', 'animation_speed', 'animation_direction']
 
 
 class DialogueSerializer(serializers.ModelSerializer):
@@ -26,7 +27,8 @@ class DialogueSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Dialogue
-        fields = ['id', 'frame', 'game_object', 'text']
+        fields = ['id', 'frame', 'game_object', 'text', 'height', 'width',
+                  'position_x', 'position_y']
 
 
 class QuizSerializer(serializers.ModelSerializer):
@@ -46,6 +48,7 @@ class FrameSerializer(serializers.ModelSerializer):
     class Meta:
         model = Frame
         fields = ['id', 'lesson', 'name', 'frame_type', 'background',
+                  'color', 'height', 'width', 'order',
                   'previous_frame', 'objects', 'dialogues', 'quiz']
 
 

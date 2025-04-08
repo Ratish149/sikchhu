@@ -134,6 +134,10 @@ class FrameListCreateView(generics.ListCreateAPIView):
             frame_type = request.data.get('frame_type', 'background')
             background_id = request.data.get('background')
             previous_frame_id = request.data.get('previous_frame')
+            color = request.data.get('color')
+            height = request.data.get('height', 100)
+            width = request.data.get('width', 100)
+            order = request.data.get('order', 0)
 
             # Handle related data
             objects_data = []
@@ -178,6 +182,13 @@ class FrameListCreateView(generics.ListCreateAPIView):
             # Set name and frame type
             frame.name = name
             frame.frame_type = frame_type
+
+            # Set dimensions, color and order
+            if color:
+                frame.color = color
+            frame.height = height
+            frame.width = width
+            frame.order = order
 
             # Set background if provided
             if background_id:
@@ -331,13 +342,22 @@ class FrameRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
                 for dialogue in obj.dialogues.all():
                     obj_dialogues.append({
                         'id': dialogue.id,
-                        'text': dialogue.text
+                        'text': dialogue.text,
+                        'height': dialogue.height,
+                        'width': dialogue.width,
+                        'position_x': dialogue.position_x,
+                        'position_y': dialogue.position_y
                     })
 
                 objects_data.append({
                     'id': obj.id,
                     'name': obj.name,
                     'image': image_url,
+                    'position_x': obj.position_x,
+                    'position_y': obj.position_y,
+                    'animation': obj.animation,
+                    'animation_speed': obj.animation_speed,
+                    'animation_direction': obj.animation_direction,
                     'dialogues': obj_dialogues
                 })
 
@@ -351,13 +371,21 @@ class FrameRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
                         'id': option.id,
                         'text': option.text,
                         'is_correct': option.is_correct,
-                        'explanation': option.explanation
+                        'explanation': option.explanation,
+                        'height': option.height,
+                        'width': option.width,
+                        'position_x': option.position_x,
+                        'position_y': option.position_y
                     })
 
                 quiz_data = {
                     'id': quiz.id,
                     'question': quiz.question,
-                    'options': options_data
+                    'options': options_data,
+                    'height': quiz.height,
+                    'width': quiz.width,
+                    'position_x': quiz.position_x,
+                    'position_y': quiz.position_y
                 }
 
             # Build the response
@@ -367,6 +395,10 @@ class FrameRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
                 'name': frame.name,
                 'frame_type': frame.frame_type,
                 'background': frame.background.id if frame.background else None,
+                'color': frame.color,
+                'height': frame.height,
+                'width': frame.width,
+                'order': frame.order,
                 'previous_frame': frame.previous_frame.id if frame.previous_frame else None,
                 'next_frame': frame.get_next_frame().id if frame.get_next_frame() else None,
                 'objects': objects_data,
@@ -388,6 +420,10 @@ class FrameRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
             frame_type = request.data.get('frame_type')
             background_id = request.data.get('background')
             previous_frame_id = request.data.get('previous_frame')
+            color = request.data.get('color')
+            height = request.data.get('height')
+            width = request.data.get('width')
+            order = request.data.get('order')
 
             # Update frame fields if provided
             if lesson_id is not None:
@@ -417,6 +453,18 @@ class FrameRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
                     frame.previous_frame = previous_frame
                 except Frame.DoesNotExist:
                     return Response({'error': 'Previous frame not found'}, status=status.HTTP_404_NOT_FOUND)
+
+            if color is not None:
+                frame.color = color
+
+            if height is not None:
+                frame.height = height
+
+            if width is not None:
+                frame.width = width
+
+            if order is not None:
+                frame.order = order
 
             frame.save()
 
@@ -448,6 +496,11 @@ class GameObjectListCreateView(generics.ListCreateAPIView):
             frame_id = request.data.get('frame')
             name = request.data.get('name')
             image = request.FILES.get('image', None)
+            position_x = request.data.get('position_x', 0)
+            position_y = request.data.get('position_y', 0)
+            animation = request.data.get('animation', None)
+            animation_speed = request.data.get('animation_speed', 1)
+            animation_direction = request.data.get('animation_direction', None)
 
             if not frame_id:
                 return Response({'error': 'Frame is required'}, status=status.HTTP_400_BAD_REQUEST)
@@ -464,7 +517,12 @@ class GameObjectListCreateView(generics.ListCreateAPIView):
             obj = GameObject.objects.create(
                 frame=frame,
                 name=name,
-                image=image
+                image=image,
+                position_x=position_x,
+                position_y=position_y,
+                animation=animation,
+                animation_speed=animation_speed,
+                animation_direction=animation_direction
             )
 
             # Build image URL if it exists
@@ -477,7 +535,12 @@ class GameObjectListCreateView(generics.ListCreateAPIView):
                 'id': obj.id,
                 'frame': obj.frame.id,
                 'name': obj.name,
-                'image': image_url
+                'image': image_url,
+                'position_x': obj.position_x,
+                'position_y': obj.position_y,
+                'animation': obj.animation,
+                'animation_speed': obj.animation_speed,
+                'animation_direction': obj.animation_direction
             }, status=status.HTTP_201_CREATED)
 
         except Exception as e:
@@ -512,7 +575,12 @@ class GameObjectRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView)
                 'id': obj.id,
                 'frame': obj.frame.id,
                 'name': obj.name,
-                'image': image_url
+                'image': image_url,
+                'position_x': obj.position_x,
+                'position_y': obj.position_y,
+                'animation': obj.animation,
+                'animation_speed': obj.animation_speed,
+                'animation_direction': obj.animation_direction
             })
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -525,6 +593,11 @@ class GameObjectRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView)
             frame_id = request.data.get('frame')
             name = request.data.get('name')
             image = request.FILES.get('image')
+            position_x = request.data.get('position_x')
+            position_y = request.data.get('position_y')
+            animation = request.data.get('animation')
+            animation_speed = request.data.get('animation_speed')
+            animation_direction = request.data.get('animation_direction')
 
             # Update fields if provided
             if frame_id is not None:
@@ -540,6 +613,16 @@ class GameObjectRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView)
             elif 'image' in request.data and not image:
                 # Handle removing image if empty value provided
                 obj.image = None
+            if position_x is not None:
+                obj.position_x = position_x
+            if position_y is not None:
+                obj.position_y = position_y
+            if animation is not None:
+                obj.animation = animation
+            if animation_speed is not None:
+                obj.animation_speed = animation_speed
+            if animation_direction is not None:
+                obj.animation_direction = animation_direction
 
             obj.save()
 
@@ -553,7 +636,12 @@ class GameObjectRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView)
                 'id': obj.id,
                 'frame': obj.frame.id,
                 'name': obj.name,
-                'image': image_url
+                'image': image_url,
+                'position_x': obj.position_x,
+                'position_y': obj.position_y,
+                'animation': obj.animation,
+                'animation_speed': obj.animation_speed,
+                'animation_direction': obj.animation_direction
             })
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -580,6 +668,10 @@ class DialogueListCreateView(generics.ListCreateAPIView):
             frame_id = request.data.get('frame')
             game_object_id = request.data.get('game_object')
             text = request.data.get('text')
+            height = request.data.get('height', 100)
+            width = request.data.get('width', 100)
+            position_x = request.data.get('position_x', 0)
+            position_y = request.data.get('position_y', 0)
 
             if not frame_id:
                 return Response({'error': 'Frame is required'}, status=status.HTTP_400_BAD_REQUEST)
@@ -604,7 +696,11 @@ class DialogueListCreateView(generics.ListCreateAPIView):
             dialogue = Dialogue.objects.create(
                 frame=frame,
                 game_object=game_object,
-                text=text
+                text=text,
+                height=height,
+                width=width,
+                position_x=position_x,
+                position_y=position_y
             )
 
             # Return the created dialogue data
@@ -612,7 +708,11 @@ class DialogueListCreateView(generics.ListCreateAPIView):
                 'id': dialogue.id,
                 'frame': dialogue.frame.id,
                 'game_object': dialogue.game_object.id,
-                'text': dialogue.text
+                'text': dialogue.text,
+                'height': dialogue.height,
+                'width': dialogue.width,
+                'position_x': dialogue.position_x,
+                'position_y': dialogue.position_y
             }, status=status.HTTP_201_CREATED)
 
         except Exception as e:
@@ -645,7 +745,11 @@ class DialogueRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
                 'id': dialogue.id,
                 'frame': dialogue.frame.id,
                 'game_object': dialogue.game_object.id,
-                'text': dialogue.text
+                'text': dialogue.text,
+                'height': dialogue.height,
+                'width': dialogue.width,
+                'position_x': dialogue.position_x,
+                'position_y': dialogue.position_y
             })
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -658,6 +762,10 @@ class DialogueRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
             frame_id = request.data.get('frame')
             game_object_id = request.data.get('game_object')
             text = request.data.get('text')
+            height = request.data.get('height')
+            width = request.data.get('width')
+            position_x = request.data.get('position_x')
+            position_y = request.data.get('position_y')
 
             # Update fields if provided
             if frame_id is not None:
@@ -677,6 +785,18 @@ class DialogueRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
             if text is not None:
                 dialogue.text = text
 
+            if height is not None:
+                dialogue.height = height
+
+            if width is not None:
+                dialogue.width = width
+
+            if position_x is not None:
+                dialogue.position_x = position_x
+
+            if position_y is not None:
+                dialogue.position_y = position_y
+
             dialogue.save()
 
             # Return updated data
@@ -684,7 +804,11 @@ class DialogueRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
                 'id': dialogue.id,
                 'frame': dialogue.frame.id,
                 'game_object': dialogue.game_object.id,
-                'text': dialogue.text
+                'text': dialogue.text,
+                'height': dialogue.height,
+                'width': dialogue.width,
+                'position_x': dialogue.position_x,
+                'position_y': dialogue.position_y
             })
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
