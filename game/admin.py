@@ -1,10 +1,17 @@
 from django.contrib import admin
 from django.utils.safestring import mark_safe
-from .models import Frame, GameObject, Dialogue, Quiz, QuizOption, Background
-from unfold.admin import ModelAdmin, TabularInline, StackedInline
+from .models import Frame, GameObject, Dialogue, Quiz, QuizOption, Background, UserProgress
+from unfold.admin import ModelAdmin, TabularInline
 
 
 admin.site.register(Background, ModelAdmin)
+
+
+class GameObjectInline(TabularInline):
+    """Inline for adding GameObjects linked to a Frame"""
+    model = GameObject
+    extra = 1
+    tab = True
 
 
 class DialogueInline(TabularInline):
@@ -28,7 +35,7 @@ class FrameAdmin(ModelAdmin):
     list_filter = ('frame_type',)
     search_fields = ('id', 'frame_type')
 
-    inlines = [DialogueInline, QuizInline]
+    inlines = [GameObjectInline, DialogueInline, QuizInline]
 
     def get_next_frame(self, obj):
         """Show the next frame in the admin panel"""
@@ -69,3 +76,10 @@ class QuizAdmin(ModelAdmin):
 class QuizOptionAdmin(ModelAdmin):
     list_display = ('text', 'is_correct')
     list_filter = ('is_correct',)
+
+
+@admin.register(UserProgress)
+class UserProgressAdmin(ModelAdmin):
+    list_display = ('user', 'lesson', 'current_frame', 'score')
+    list_filter = ('lesson',)
+    search_fields = ('user__username', 'lesson__name')

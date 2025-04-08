@@ -1,8 +1,8 @@
 from django.contrib import admin
-from unfold.admin import ModelAdmin, TabularInline
+from unfold.admin import ModelAdmin, TabularInline, StackedInline
 from tinymce.widgets import TinyMCE
 from django.db import models
-from .models import Class, Subject, Chapter, Lesson, Video, LearningMaterial, Question, Answer, LessonReview
+from .models import Class, Subject, Chapter, Lesson, Video, LearningMaterial, Question, LessonReview, QuestionOption
 # Register your models here.
 
 
@@ -24,10 +24,26 @@ class VideoInline(TabularInline):
     tab = True
 
 
-class QuestionInline(TabularInline):
+class QuestionOptionInline(TabularInline):
+    model = QuestionOption
+    extra = 1
+    tab = True
+    fields = ('option', 'is_correct', 'explanation')
+
+
+class QuestionInline(StackedInline):
+    inlines = [QuestionOptionInline]
     model = Question
     extra = 1
     tab = True
+
+
+class QuestionAdmin(ModelAdmin):
+    inlines = [QuestionOptionInline]
+    list_display = ('question_text', 'lesson', 'created_at')
+    search_fields = ('question_text', 'lesson__name')
+    list_filter = ('lesson', 'created_at')
+    fields = ('lesson', 'question_text', 'explanation')
 
 
 class ChapterAdmin(ModelAdmin):
@@ -55,7 +71,6 @@ admin.site.register(Subject, ModelAdmin)
 admin.site.register(Chapter, ChapterAdmin)
 admin.site.register(Video, ModelAdmin)
 admin.site.register(LearningMaterial, ModelAdmin)
-admin.site.register(Question, ModelAdmin)
-admin.site.register(Answer, ModelAdmin)
+admin.site.register(Question, QuestionAdmin)
 admin.site.register(Lesson, LessonAdmin)
 admin.site.register(LessonReview, LessonReviewAdmin)

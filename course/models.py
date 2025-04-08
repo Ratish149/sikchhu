@@ -113,27 +113,41 @@ class LearningMaterial(models.Model):
         return self.title if self.title else f"Learning Material {self.id} - {self.material_type}"
 
 
-class Answer(models.Model):
-    answer_text = models.CharField(max_length=255)
-    is_correct = models.BooleanField(default=False)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    def __str__(self):
-        return self.answer_text[:50] + "..." if len(self.answer_text) > 50 else self.answer_text
-
-
 class Question(models.Model):
     lesson = models.ForeignKey(
-        Lesson, on_delete=models.CASCADE, related_name='questions', null=True, blank=True)
+        Lesson,
+        on_delete=models.CASCADE,
+        related_name='questions'
+    )
     question_text = models.CharField(max_length=255)
     explanation = models.TextField(null=True, blank=True)
-    answer = models.ManyToManyField(Answer, related_name='questions')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return self.question_text[:50] + "..." if len(self.question_text) > 50 else self.question_text
+
+    class Meta:
+        ordering = ['-created_at']
+
+
+class QuestionOption(models.Model):
+    question = models.ForeignKey(
+        Question,
+        on_delete=models.CASCADE,
+        related_name='options'
+    )
+    option = models.CharField(max_length=255)
+    is_correct = models.BooleanField(default=False)
+    explanation = models.TextField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Option: {self.option} ({'Correct' if self.is_correct else 'Wrong'})"
+
+    class Meta:
+        ordering = ['id']
 
 
 class LessonReview(models.Model):

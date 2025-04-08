@@ -32,6 +32,10 @@ class Frame(models.Model):
         blank=True,
         related_name='frames'
     )
+    color = models.CharField(
+        max_length=255, help_text="Color of the frame", blank=True, null=True)
+    height = models.DecimalField(max_digits=10, decimal_places=2, default=100)
+    width = models.DecimalField(max_digits=10, decimal_places=2, default=100)
 
     previous_frame = models.OneToOneField(
         'self',
@@ -40,21 +44,32 @@ class Frame(models.Model):
         blank=True,
         related_name='next_frame_relation'
     )
+    order = models.IntegerField(default=0)
 
     def __str__(self):
         return f"Frame {self.id} - {self.name} - {self.get_frame_type_display()}"
 
     def get_next_frame(self):
-        return self.next_frame if hasattr(self, 'next_frame') else None
+        return self.next_frame_relation if hasattr(self, 'next_frame_relation') else None
 
 
 class GameObject(models.Model):
     """Objects in the frame (e.g., a tree, a character, an apple)"""
     frame = models.ForeignKey(
-        Frame, on_delete=models.CASCADE, related_name='objects')
+        Frame, on_delete=models.CASCADE, related_name='game_objects')
     name = models.CharField(
         max_length=255, help_text="Name of the object (e.g., Newton, Apple, Tree)")
     image = models.FileField(upload_to='game_objects/', blank=True, null=True)
+    position_x = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0)
+    position_y = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0)
+    animation = models.CharField(
+        max_length=255, help_text="Animation of the object", blank=True, null=True)
+    animation_speed = models.DecimalField(
+        max_digits=10, decimal_places=2, default=1)
+    animation_direction = models.CharField(
+        max_length=255, help_text="Direction of the animation", blank=True, null=True)
 
     def __str__(self):
         return f"{self.name} in Frame {self.frame.id}"
@@ -67,6 +82,12 @@ class Dialogue(models.Model):
     game_object = models.ForeignKey(
         GameObject, on_delete=models.CASCADE, related_name='dialogues', help_text="Who speaks this text")
     text = models.TextField(help_text="Dialogue text spoken by the object")
+    height = models.DecimalField(max_digits=10, decimal_places=2, default=100)
+    width = models.DecimalField(max_digits=10, decimal_places=2, default=100)
+    position_x = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0)
+    position_y = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0)
 
     def __str__(self):
         return f"{self.game_object.name} says: {self.text[:30]}..."
@@ -79,6 +100,12 @@ class Quiz(models.Model):
     question = models.TextField(help_text="Quiz question")
     options = models.ManyToManyField(
         'QuizOption', related_name='quizzes', blank=True)
+    height = models.DecimalField(max_digits=10, decimal_places=2, default=100)
+    width = models.DecimalField(max_digits=10, decimal_places=2, default=100)
+    position_x = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0)
+    position_y = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0)
 
     def __str__(self):
         return f"Quiz in Frame {self.frame.id}: {self.question[:30]}..."
@@ -90,6 +117,12 @@ class QuizOption(models.Model):
         default=False, help_text="Is this the correct answer?")
     explanation = models.TextField(
         help_text="Explanation for the answer", blank=True, null=True)
+    height = models.DecimalField(max_digits=10, decimal_places=2, default=100)
+    width = models.DecimalField(max_digits=10, decimal_places=2, default=100)
+    position_x = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0)
+    position_y = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0)
 
     def __str__(self):
         return f"Option: {self.text} ({'Correct' if self.is_correct else 'Wrong'})"

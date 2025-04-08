@@ -1,10 +1,10 @@
 from rest_framework import status, generics, filters as rest_filters, views
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from .models import Class, Subject, Chapter, Lesson, Video, LearningMaterial, Answer, Question, LessonReview
+from .models import Class, Subject, Chapter, Lesson, Video, LearningMaterial, Question, LessonReview, QuestionOption
 from .serializers import (
     ClassSerializer, SubjectSerializer, ChapterSerializer, LessonSerializer,
-    VideoSerializer, LearningMaterialSerializer, AnswerSerializer, QuestionSerializer, LessonReviewSerializer
+    VideoSerializer, LearningMaterialSerializer, QuestionSerializer, LessonReviewSerializer, QuestionOptionSerializer
 )
 from rest_framework.parsers import JSONParser, FormParser, MultiPartParser
 import json
@@ -625,47 +625,42 @@ class LessonListCreateView(generics.ListCreateAPIView):
                         'updated_at': material.updated_at
                     })
 
-            # Process questions and answers
+            # Process questions
             created_questions = []
             for question_data in questions_data:
                 question_text = question_data.get('question_text')
                 explanation = question_data.get('explanation', '')
-                answers_data = question_data.get('answers', [])
+                options_data = question_data.get('options', [])
 
                 if question_text:
+                    # Create the question
                     question = Question.objects.create(
                         lesson=lesson,
                         question_text=question_text,
                         explanation=explanation
                     )
 
-                    created_answers = []
-                    for answer_data in answers_data:
-                        answer_text = answer_data.get('answer_text')
-                        is_correct = answer_data.get('is_correct', False)
-
-                        if answer_text:
-                            answer = Answer.objects.create(
-                                answer_text=answer_text,
-                                is_correct=is_correct
-                            )
-                            question.answer.add(answer)
-
-                            created_answers.append({
-                                'id': answer.id,
-                                'answer_text': answer.answer_text,
-                                'is_correct': answer.is_correct,
-                                'created_at': answer.created_at,
-                                'updated_at': answer.updated_at
-                            })
+                    # Create options for this question
+                    options = []
+                    for option_data in options_data:
+                        option = QuestionOption.objects.create(
+                            question=question,
+                            option=option_data.get('option'),
+                            is_correct=option_data.get('is_correct', False),
+                            explanation=option_data.get('explanation', '')
+                        )
+                        options.append({
+                            'id': option.id,
+                            'option': option.option,
+                            'is_correct': option.is_correct,
+                            'explanation': option.explanation
+                        })
 
                     created_questions.append({
                         'id': question.id,
                         'question_text': question.question_text,
                         'explanation': question.explanation,
-                        'answers': created_answers,
-                        'created_at': question.created_at,
-                        'updated_at': question.updated_at
+                        'options': options
                     })
 
             # Build the icon URL if it exists
@@ -727,7 +722,7 @@ class LessonRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
             if lesson.icon and hasattr(lesson.icon, 'url'):
                 icon_url = request.build_absolute_uri(lesson.icon.url)
 
-            # Get videos related to this lesson - using the related manager
+            # Get videos related to this lesson
             videos = []
             total_duration = 0
             for video in Video.objects.filter(lesson_name=lesson):
@@ -736,7 +731,6 @@ class LessonRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
                     video_file_url = request.build_absolute_uri(
                         video.video_file.url)
 
-                # Add proper handling for video_thumbnail
                 video_thumbnail_url = None
                 if video.video_thumbnail and hasattr(video.video_thumbnail, 'url'):
                     video_thumbnail_url = request.build_absolute_uri(
@@ -755,7 +749,7 @@ class LessonRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
                     'video_thumbnail': video_thumbnail_url,
                 })
 
-            # Get learning materials related to this lesson - using the related_name "materials"
+            # Get learning materials
             learning_materials = []
             for material in lesson.materials.all():
                 file_url = None
@@ -771,26 +765,25 @@ class LessonRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
                     'game_url': material.game_url,
                 })
 
-            # Get questions related to this lesson - using the related_name "questions"
+            # Get questions with their options
             questions = []
             for question in lesson.questions.all():
-                # Get answers for this question
-                answers = []
-                for answer in question.answer.all():
-                    answers.append({
-                        'id': answer.id,
-                        'answer_text': answer.answer_text,
-                        'is_correct': answer.is_correct,
-                    })
+                # Get options for this question
+                options = [{
+                    'id': option.id,
+                    'option': option.option,
+                    'is_correct': option.is_correct,
+                    'explanation': option.explanation
+                } for option in question.options.all()]
 
                 questions.append({
                     'id': question.id,
                     'question_text': question.question_text,
                     'explanation': question.explanation,
-                    'answers': answers,
+                    'options': options
                 })
 
-            # Return the lesson data with related objects
+            # Return the lesson data with all related objects
             return Response({
                 'id': lesson.id,
                 'chapter_name': lesson.chapter_name.id,
@@ -840,7 +833,7 @@ class LessonRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
             if lesson.icon and hasattr(lesson.icon, 'url'):
                 icon_url = request.build_absolute_uri(lesson.icon.url)
 
-            # Get videos related to this lesson - using the related manager
+            # Get videos related to this lesson
             videos = []
             for video in Video.objects.filter(lesson_name=lesson):
                 video_file_url = None
@@ -858,7 +851,7 @@ class LessonRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
                     'updated_at': video.updated_at
                 })
 
-            # Get learning materials related to this lesson - using the related_name "materials"
+            # Get learning materials
             learning_materials = []
             for material in lesson.materials.all():
                 file_url = None
@@ -876,30 +869,25 @@ class LessonRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
                     'updated_at': material.updated_at
                 })
 
-            # Get questions related to this lesson - using the related_name "questions"
+            # Get questions with their options
             questions = []
             for question in lesson.questions.all():
-                # Get answers for this question
-                answers = []
-                for answer in question.answer.all():
-                    answers.append({
-                        'id': answer.id,
-                        'answer_text': answer.answer_text,
-                        'is_correct': answer.is_correct,
-                        'created_at': answer.created_at,
-                        'updated_at': answer.updated_at
-                    })
+                # Get options for this question
+                options = [{
+                    'id': option.id,
+                    'option': option.option,
+                    'is_correct': option.is_correct,
+                    'explanation': option.explanation
+                } for option in question.options.all()]
 
                 questions.append({
                     'id': question.id,
                     'question_text': question.question_text,
                     'explanation': question.explanation,
-                    'answers': answers,
-                    'created_at': question.created_at,
-                    'updated_at': question.updated_at
+                    'options': options
                 })
 
-            # Return updated data with related objects
+            # Return updated data with all related objects
             return Response({
                 'id': lesson.id,
                 'chapter_name': lesson.chapter_name.id,
@@ -1258,97 +1246,6 @@ class LearningMaterialRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAP
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-class AnswerListCreateView(generics.ListCreateAPIView):
-    queryset = Answer.objects.all()
-    serializer_class = AnswerSerializer
-    parser_classes = (JSONParser, FormParser, MultiPartParser)
-
-    def create(self, request, *args, **kwargs):
-        try:
-            answer_text = request.data.get('answer_text')
-            is_correct = request.data.get('is_correct', False)
-
-            if not answer_text:
-                return Response({'error': 'Answer text is required'}, status=status.HTTP_400_BAD_REQUEST)
-
-            # Create a new answer instance
-            answer = Answer.objects.create(
-                answer_text=answer_text,
-                is_correct=is_correct
-            )
-
-            # Return the created object data
-            return Response({
-                'id': answer.id,
-                'answer_text': answer.answer_text,
-                'is_correct': answer.is_correct,
-                'created_at': answer.created_at,
-                'updated_at': answer.updated_at
-            }, status=status.HTTP_201_CREATED)
-
-        except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-class AnswerRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Answer.objects.all()
-    serializer_class = AnswerSerializer
-    parser_classes = (JSONParser, FormParser, MultiPartParser)
-
-    def retrieve(self, request, *args, **kwargs):
-        try:
-            answer = self.get_object()
-
-            # Return the answer data
-            return Response({
-                'id': answer.id,
-                'answer_text': answer.answer_text,
-                'is_correct': answer.is_correct,
-                'created_at': answer.created_at,
-                'updated_at': answer.updated_at
-            })
-        except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    def update(self, request, *args, **kwargs):
-        try:
-            answer = self.get_object()
-
-            # Get data from request
-            answer_text = request.data.get('answer_text')
-            is_correct = request.data.get('is_correct')
-
-            # Update fields if provided
-            if answer_text is not None:
-                answer.answer_text = answer_text
-            if is_correct is not None:
-                answer.is_correct = is_correct
-
-            answer.save()
-
-            # Return updated data
-            return Response({
-                'id': answer.id,
-                'answer_text': answer.answer_text,
-                'is_correct': answer.is_correct,
-                'created_at': answer.created_at,
-                'updated_at': answer.updated_at
-            })
-        except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    def partial_update(self, request, *args, **kwargs):
-        return self.update(request, *args, **kwargs)
-
-    def destroy(self, request, *args, **kwargs):
-        try:
-            answer = self.get_object()
-            answer.delete()
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
 class QuestionListCreateView(generics.ListCreateAPIView):
     queryset = Question.objects.all()
     serializer_class = QuestionSerializer
@@ -1356,49 +1253,56 @@ class QuestionListCreateView(generics.ListCreateAPIView):
 
     def create(self, request, *args, **kwargs):
         try:
+            # Get the data from request
             lesson_id = request.data.get('lesson')
             question_text = request.data.get('question_text')
             explanation = request.data.get('explanation', '')
-            answer_ids = request.data.get('answer', [])
+            options_data = request.data.get('options', [])
 
+            # Validate required fields
+            if not lesson_id:
+                return Response({'error': 'Lesson is required'}, status=status.HTTP_400_BAD_REQUEST)
             if not question_text:
                 return Response({'error': 'Question text is required'}, status=status.HTTP_400_BAD_REQUEST)
+            if not options_data:
+                return Response({'error': 'At least one option is required'}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Check if lesson exists if provided
-            lesson = None
-            if lesson_id:
-                try:
-                    lesson = Lesson.objects.get(id=lesson_id)
-                except Lesson.DoesNotExist:
-                    return Response({'error': 'Lesson not found'}, status=status.HTTP_404_NOT_FOUND)
+            # Check if lesson exists
+            try:
+                lesson = Lesson.objects.get(id=lesson_id)
+            except Lesson.DoesNotExist:
+                return Response({'error': 'Lesson not found'}, status=status.HTTP_404_NOT_FOUND)
 
-            # Create a new question instance
+            # Create question
             question = Question.objects.create(
                 lesson=lesson,
                 question_text=question_text,
                 explanation=explanation
             )
 
-            # Add answers if provided
-            if answer_ids:
-                answers = Answer.objects.filter(id__in=answer_ids)
-                question.answer.set(answers)
-
-            # Return the created object data with answer details
-            answer_data = []
-            for answer in question.answer.all():
-                answer_data.append({
-                    'id': answer.id,
-                    'answer_text': answer.answer_text,
-                    'is_correct': answer.is_correct
+            # Create options
+            options = []
+            for option_data in options_data:
+                option = QuestionOption.objects.create(
+                    question=question,
+                    option=option_data.get('option'),
+                    is_correct=option_data.get('is_correct', False),
+                    explanation=option_data.get('explanation', '')
+                )
+                options.append({
+                    'id': option.id,
+                    'option': option.option,
+                    'is_correct': option.is_correct,
+                    'explanation': option.explanation
                 })
 
+            # Return response
             return Response({
                 'id': question.id,
-                'lesson': question.lesson.id if question.lesson else None,
-                'question_text': question.question_text,
-                'explanation': question.explanation,
-                'answer': answer_data,
+                'lesson': lesson.id,
+                'question_text': question_text,
+                'explanation': explanation,
+                'options': options,
                 'created_at': question.created_at,
                 'updated_at': question.updated_at
             }, status=status.HTTP_201_CREATED)
@@ -1425,14 +1329,13 @@ class QuestionRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
         try:
             question = self.get_object()
 
-            # Get answer details
-            answer_data = []
-            for answer in question.answer.all():
-                answer_data.append({
-                    'id': answer.id,
-                    'answer_text': answer.answer_text,
-                    'is_correct': answer.is_correct
-                })
+            # Get all options for this question
+            options = [{
+                'id': option.id,
+                'option': option.option,
+                'is_correct': option.is_correct,
+                'explanation': option.explanation
+            } for option in question.options.all()]
 
             # Return the question data
             return Response({
@@ -1440,7 +1343,7 @@ class QuestionRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
                 'lesson': question.lesson.id if question.lesson else None,
                 'question_text': question.question_text,
                 'explanation': question.explanation,
-                'answer': answer_data,
+                'options': options,
                 'created_at': question.created_at,
                 'updated_at': question.updated_at
             })
@@ -1455,15 +1358,16 @@ class QuestionRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
             lesson_id = request.data.get('lesson')
             question_text = request.data.get('question_text')
             explanation = request.data.get('explanation')
-            answer_ids = request.data.get('answer')
+            options_data = request.data.get('options')
 
-            # Update fields if provided
+            # Update question fields if provided
             if lesson_id is not None:
                 try:
                     lesson = Lesson.objects.get(id=lesson_id)
                     question.lesson = lesson
                 except Lesson.DoesNotExist:
                     return Response({'error': 'Lesson not found'}, status=status.HTTP_404_NOT_FOUND)
+
             if question_text is not None:
                 question.question_text = question_text
             if explanation is not None:
@@ -1471,19 +1375,33 @@ class QuestionRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
 
             question.save()
 
-            # Update answers if provided
-            if answer_ids is not None:
-                answers = Answer.objects.filter(id__in=answer_ids)
-                question.answer.set(answers)
+            # Update options if provided
+            if options_data is not None:
+                # Delete existing options
+                question.options.all().delete()
 
-            # Get updated answer details
-            answer_data = []
-            for answer in question.answer.all():
-                answer_data.append({
-                    'id': answer.id,
-                    'answer_text': answer.answer_text,
-                    'is_correct': answer.is_correct
-                })
+                # Create new options
+                options = []
+                for option_data in options_data:
+                    option = QuestionOption.objects.create(
+                        question=question,
+                        option=option_data.get('option'),
+                        is_correct=option_data.get('is_correct', False),
+                        explanation=option_data.get('explanation', '')
+                    )
+                    options.append({
+                        'id': option.id,
+                        'option': option.option,
+                        'is_correct': option.is_correct,
+                        'explanation': option.explanation
+                    })
+            else:
+                options = [{
+                    'id': option.id,
+                    'option': option.option,
+                    'is_correct': option.is_correct,
+                    'explanation': option.explanation
+                } for option in question.options.all()]
 
             # Return updated data
             return Response({
@@ -1491,7 +1409,7 @@ class QuestionRetrieveUpdateDestroyView(generics.RetrieveUpdateDestroyAPIView):
                 'lesson': question.lesson.id if question.lesson else None,
                 'question_text': question.question_text,
                 'explanation': question.explanation,
-                'answer': answer_data,
+                'options': options,
                 'created_at': question.created_at,
                 'updated_at': question.updated_at
             })
@@ -1516,21 +1434,20 @@ class ValidateAnswerView(views.APIView):
     def post(self, request, *args, **kwargs):
         try:
             question_id = request.data.get('question_id')
-            answer_id = request.data.get('answer_id')
+            selected_option_id = request.data.get('option_id')
 
-            # Validate input parameters
             if not question_id:
                 return Response(
                     {"error": "Question ID is required"},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            if not answer_id:
+            if not selected_option_id:
                 return Response(
-                    {"error": "Answer ID is required"},
+                    {"error": "Option ID is required"},
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Check if question exists
+            # Get question and validate
             try:
                 question = Question.objects.get(id=question_id)
             except Question.DoesNotExist:
@@ -1539,31 +1456,39 @@ class ValidateAnswerView(views.APIView):
                     status=status.HTTP_404_NOT_FOUND
                 )
 
-            # Check if answer exists and belongs to the question
+            # Get selected option and validate
             try:
-                answer = Answer.objects.get(id=answer_id)
-                if not question.answer.filter(id=answer_id).exists():
-                    return Response(
-                        {"error": "This answer doesn't belong to the specified question"},
-                        status=status.HTTP_400_BAD_REQUEST
-                    )
-            except Answer.DoesNotExist:
+                selected_option = QuestionOption.objects.get(
+                    id=selected_option_id,
+                    question=question
+                )
+            except QuestionOption.DoesNotExist:
                 return Response(
-                    {"error": "Answer not found"},
-                    status=status.HTTP_404_NOT_FOUND
+                    {"error": "Invalid option for this question"},
+                    status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Build response based on answer correctness
+            # Get correct option
+            correct_option = question.options.get(is_correct=True)
+
             response_data = {
-                'is_correct': answer.is_correct,
-                'explanation': question.explanation
+                'is_correct': selected_option.is_correct,
+                'selected_option': {
+                    'option': selected_option.option,
+                    'explanation': selected_option.explanation
+                },
+                'correct_option': {
+                    'option': correct_option.option,
+                    'explanation': correct_option.explanation
+                },
+                'question_explanation': question.explanation
             }
 
             return Response(response_data)
 
         except Exception as e:
             return Response(
-                {"error": f"Failed to validate answer: {str(e)}"},
+                {"error": str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 

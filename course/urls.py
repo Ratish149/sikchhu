@@ -36,12 +36,6 @@ urlpatterns = [
     path('learning-materials/<int:pk>/',
          views.LearningMaterialRetrieveUpdateDestroyView.as_view(), name='learning-material-detail'),
 
-    # Answer URLs
-    path('answers/', views.AnswerListCreateView.as_view(),
-         name='answer-list-create'),
-    path('answers/<int:pk>/',
-         views.AnswerRetrieveUpdateDestroyView.as_view(), name='answer-detail'),
-
     # Question URLs
     path('questions/', views.QuestionListCreateView.as_view(),
          name='question-list-create'),
