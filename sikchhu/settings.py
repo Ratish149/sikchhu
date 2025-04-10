@@ -29,6 +29,8 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
+FRONTEND_URL = 'http://localhost:3000'
+
 
 # Application definition
 
@@ -197,11 +199,13 @@ REST_FRAMEWORK = {
 
 
 SIMPLE_JWT = {
-    'ACCESS_TOKEN_LIFETIME': timedelta(days=60),
-    'REFRESH_TOKEN_LIFETIME': timedelta(days=60),
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=10),
+    'REFRESH_TOKEN_LIFETIME': timedelta(minutes=10),
     'ROTATE_REFRESH_TOKENS': False,
     'BLACKLIST_AFTER_ROTATION': False,
     'UPDATE_LAST_LOGIN': False,
+    'ALGORITHM': 'HS256',
+    'TOKEN_OBTAIN_SERIALIZER': 'account.token.CustomToken',
 }
 
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'

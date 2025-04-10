@@ -6,7 +6,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from django.contrib.auth.hashers import make_password
 from .models import CustomUser, Organization
-from .serializers import ChangePasswordSerializer, LoginSerializer, UserSerializer, OrganizationSerializer, VerifyEmailSerializer
+from .serializers import ChangePasswordSerializer, ForgotPasswordConfirmSerializer, ForgotPasswordSerializer, LoginSerializer, UserSerializer, OrganizationSerializer, VerifyEmailSerializer
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
 from django.utils.html import strip_tags
@@ -17,6 +17,7 @@ import time
 import base64
 import hmac
 import hashlib
+from .token import CustomToken  # Add this import at the top
 
 # Create your views here.
 
@@ -41,7 +42,7 @@ class RegisterView(generics.CreateAPIView):
         context = {
             'user': user,
             'token': token,
-            'frontend_url': 'http://localhost:3000'
+            'frontend_url': settings.FRONTEND_URL
         }
         html_message = render_to_string('email_verification.html', context)
         plain_message = strip_tags(html_message)
@@ -172,7 +173,6 @@ class LoginView(generics.GenericAPIView):
 
     def post(self, request):
         try:
-            # Get credentials from request - only email is required now
             email = request.data.get('email')
             password = request.data.get('password')
 
@@ -181,7 +181,6 @@ class LoginView(generics.GenericAPIView):
             if not password:
                 return Response({'error': 'Password is required'}, status=status.HTTP_400_BAD_REQUEST)
 
-            # Try to authenticate with email
             try:
                 user_obj = CustomUser.objects.get(email=email)
                 if not user_obj.is_verified:
@@ -195,28 +194,14 @@ class LoginView(generics.GenericAPIView):
             if not user:
                 return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
 
-            # Generate JWT tokens
-            refresh = RefreshToken.for_user(user)
-
-            # Build the profile picture URL only if it exists
-            profile_picture_url = None
-            if user.profile_picture and hasattr(user.profile_picture, 'url'):
-                profile_picture_url = request.build_absolute_uri(
-                    user.profile_picture.url)
+            # Use CustomToken instead of RefreshToken
+            token = CustomToken.get_token(user)
 
             # Return user data and tokens
             return Response({
-                'refresh': str(refresh),
-                'access': str(refresh.access_token),
-                'user': {
-                    'id': user.id,
-                    'email': user.email,
-                    'first_name': user.first_name,
-                    'last_name': user.last_name,
-                    'phone_number': user.phone_number,
-                    'user_type': user.user_type,
-                    'profile_picture': profile_picture_url
-                }
+                'refresh': str(token),
+                'access': str(token.access_token),
+
             })
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -441,7 +426,7 @@ class VerifyEmailView(generics.GenericAPIView):
             )
 
 
-class ResendOTPView(generics.GenericAPIView):
+class ResendVerificationEmailView(generics.GenericAPIView):
     permission_classes = (AllowAny,)
 
     def post(self, request):
@@ -468,17 +453,15 @@ class ResendOTPView(generics.GenericAPIView):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # Generate new OTP
-            otp = ''.join([str(random.randint(0, 9)) for _ in range(6)])
-            user.otp = otp
-            user.otp_created_at = datetime.now()
-            user.save()
+            # Generate new verification token
+            token = encode_user_id(user.id)
 
             # Send new verification email
-            subject = 'Email Verification - New OTP'
+            subject = 'Email Verification - Sikchhu'
             context = {
                 'user': user,
-                'otp_code': otp
+                'token': token,
+                'frontend_url': settings.FRONTEND_URL
             }
             html_message = render_to_string('email_verification.html', context)
             plain_message = strip_tags(html_message)
@@ -493,7 +476,7 @@ class ResendOTPView(generics.GenericAPIView):
             )
 
             return Response(
-                {'message': 'New OTP has been sent to your email'},
+                {'message': 'Verification email has been resent to your email'},
                 status=status.HTTP_200_OK
             )
 
@@ -502,3 +485,95 @@ class ResendOTPView(generics.GenericAPIView):
                 {'error': str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+
+class ForgotPasswordView(generics.GenericAPIView):
+    permission_classes = (AllowAny,)
+    serializer_class = ForgotPasswordSerializer
+
+    def post(self, request):
+        email = request.data.get('email')
+
+        if not email:
+            return Response(
+                {'error': 'Email is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            user = CustomUser.objects.get(email=email)
+        except CustomUser.DoesNotExist:
+            return Response(
+                {'error': 'User not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        token = encode_user_id(user.id)
+
+        subject = 'Password Reset - Sikchhu'
+        context = {
+            'user': user,
+            'token': token,
+            'frontend_url': settings.FRONTEND_URL
+        }
+        html_message = render_to_string('password_reset.html', context)
+        plain_message = strip_tags(html_message)
+
+        send_mail(
+            subject,
+            plain_message,
+            settings.DEFAULT_FROM_EMAIL,
+            [user.email],
+            html_message=html_message,
+            fail_silently=False,
+        )
+
+        return Response(
+            {'message': 'Password reset email has been sent to your email'},
+            status=status.HTTP_200_OK
+        )
+
+
+class ForgotPasswordConfirmView(generics.GenericAPIView):
+    permission_classes = (AllowAny,)
+    serializer_class = ForgotPasswordConfirmSerializer
+
+    def post(self, request):
+        token = request.data.get('token')
+        password = request.data.get('password')
+
+        if not token:
+            return Response(
+                {'error': 'Token is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if not password:
+            return Response(
+                {'error': 'Password is required'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            user_id = decode_user_id(token)
+        except Exception as e:
+            return Response(
+                {'error': 'Invalid or expired token'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            user = CustomUser.objects.get(id=user_id)
+        except CustomUser.DoesNotExist:
+            return Response(
+                {'error': 'User not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        user.set_password(password)
+        user.save()
+
+        return Response(
+            {'message': 'Password reset successful'},
+            status=status.HTTP_200_OK
+        )
