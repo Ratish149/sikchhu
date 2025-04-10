@@ -66,7 +66,7 @@ class RegisterView(generics.CreateAPIView):
             first_name = request.data.get('first_name', '')
             last_name = request.data.get('last_name', '')
             phone_number = request.data.get('phone_number', None)
-            user_type = request.data.get('user_type', 'user')
+            user_type = request.data.get('user_type', 'learner')
             password = request.data.get('password')
             profile_picture = request.FILES.get('profile_picture', None)
             organization_id = request.data.get('organization_id', None)
@@ -107,24 +107,8 @@ class RegisterView(generics.CreateAPIView):
             # Send verification email
             self.send_verification_email(user, token)
 
-            # Build the profile picture URL only if it exists
-            profile_picture_url = None
-            if user.profile_picture and hasattr(user.profile_picture, 'url'):
-                profile_picture_url = request.build_absolute_uri(
-                    user.profile_picture.url)
-
             # Return user data and tokens
             return Response({
-                'user': {
-                    'id': user.id,
-                    'email': user.email,
-                    'first_name': user.first_name,
-                    'last_name': user.last_name,
-                    'phone_number': user.phone_number,
-                    'user_type': user.user_type,
-                    'profile_picture': profile_picture_url,
-                    'is_verified': user.is_verified
-                },
                 'message': 'Registration successful. Please check your email for verification link.'
             }, status=status.HTTP_201_CREATED)
         except Exception as e:
