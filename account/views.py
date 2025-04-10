@@ -172,21 +172,21 @@ class LoginView(generics.GenericAPIView):
 
                 user = authenticate(
                     username=user_obj.username, password=password)
-            except CustomUser.DoesNotExist:
-                pass
+                if not user:
+                    return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
 
-            if not user:
+                # Use CustomToken instead of RefreshToken
+                token = CustomToken.get_token(user)
+
+                # Return user data and tokens
+                return Response({
+                    'refresh': str(token),
+                    'access': str(token.access_token),
+                })
+
+            except CustomUser.DoesNotExist:
                 return Response({'error': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
 
-            # Use CustomToken instead of RefreshToken
-            token = CustomToken.get_token(user)
-
-            # Return user data and tokens
-            return Response({
-                'refresh': str(token),
-                'access': str(token.access_token),
-
-            })
         except Exception as e:
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
